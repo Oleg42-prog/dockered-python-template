@@ -22,12 +22,19 @@ RUN adduser \
     --uid "${UID}" \
     appuser
 
+# Install git and ssh client to access private repositories
+RUN apt-get update && apt-get install -y git openssh-client && rm -rf /var/lib/apt/lists/*
+
+# Add github.com to known_hosts to avoid host verification prompt
+RUN mkdir -p -m 0600 ~/.ssh && ssh-keyscan github.com >> ~/.ssh/known_hosts
+
 # Download dependencies as a separate step to take advantage of Docker's caching.
 # Leverage a cache mount to /root/.cache/pip to speed up subsequent builds.
-# Leverage a bind mount to requirements.txt to avoid having to copy them into
-# into this layer.
+# Leverage a bind mount to requirements.txt to avoid having to copy them into this layer.
+# Leverage an ssh mount to access private repositories without storing the key in the image.
 RUN --mount=type=cache,target=/root/.cache/pip \
     --mount=type=bind,source=requirements.txt,target=requirements.txt \
+    --mount=type=ssh \
     python -m pip install -r requirements.txt
 
 # Switch to the non-privileged user to run the application.
